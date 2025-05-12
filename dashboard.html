@@ -1,0 +1,1329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Treasury Dashboard</title>
+  <!-- Tailwind CSS for styling -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Remix Icon for icons -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.min.css" rel="stylesheet">
+  <!-- Inter font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <!-- Tailwind configuration -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#1e3a8a',    // Deep blue
+            secondary: '#dc2626'    // Red
+          },
+          borderRadius: {
+            'none': '0px',
+            'sm': '4px',
+            DEFAULT: '8px',
+            'md': '12px',
+            'lg': '16px',
+            'xl': '20px',
+            '2xl': '24px',
+            '3xl': '32px',
+            'full': '9999px',
+            'button': '8px'
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    .hidden {
+      display: none;
+    }
+    /* Add spinner animation for better visual feedback */
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .animate-spin {
+      animation: spin 1s linear infinite;
+    }
+    /* Add toast notification style */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 12px 20px;
+      background-color: #1e3a8a;
+      color: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      z-index: 1000;
+    }
+    .toast.show {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <!-- Main Container -->
+  <div class="max-w-7xl mx-auto p-6">
+    <!-- Header with Title and Filters -->
+    <div class="flex items-center justify-between mb-8">
+      <h1 class="text-2xl font-semibold text-primary">Treasury Dashboard</h1>
+      <div class="flex items-center gap-4">
+        <input type="text" id="search" placeholder="Search requests..." class="pl-4 pr-4 py-2 border rounded-lg">
+        <select id="statusFilter" class="px-4 py-2 border rounded-lg">
+          <option value="">All Status</option>
+          <option value="pending">Pending</option>
+          <option value="approved">Approved</option>
+          <option value="declined">Declined</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="bg-white rounded-lg shadow-sm overflow-hidden mb-8">
+      <table class="w-full">
+        <thead class="bg-gray-50 border-b border-gray-200">
+          <tr>
+            <th class="px-6 py-4">Request ID</th>
+            <th class="px-6 py-4">Requester</th>
+            <th class="px-6 py-4">Ministry</th>
+            <th class="px-6 py-4">Amount (₹)</th>
+            <th class="px-6 py-4">Status</th>
+            <th class="px-6 py-4">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="requestsTable"></tbody>
+      </table>
+    </div>
+    
+    <!-- Status Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div class="bg-white rounded-lg shadow-sm p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-lg font-semibold text-gray-800">Pending</h3>
+            <p class="text-sm text-gray-500">Awaiting approval</p>
+          </div>
+          <div class="h-12 w-12 rounded-full bg-orange-100 flex items-center justify-center">
+            <i class="ri-time-line text-orange-500 text-xl"></i>
+          </div>
+        </div>
+        <p class="text-2xl font-bold mt-4" id="pendingCount">0</p>
+      </div>
+      
+      <div class="bg-white rounded-lg shadow-sm p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-lg font-semibold text-gray-800">Approved</h3>
+            <p class="text-sm text-gray-500">Ready for payment</p>
+          </div>
+          <div class="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
+            <i class="ri-check-line text-green-500 text-xl"></i>
+          </div>
+        </div>
+        <p class="text-2xl font-bold mt-4" id="approvedCount">0</p>
+      </div>
+      
+      <div class="bg-white rounded-lg shadow-sm p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-lg font-semibold text-gray-800">Declined</h3>
+            <p class="text-sm text-gray-500">Rejected requests</p>
+          </div>
+          <div class="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
+            <i class="ri-close-line text-red-500 text-xl"></i>
+          </div>
+        </div>
+        <p class="text-2xl font-bold mt-4" id="declinedCount">0</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Request Details Modal -->
+  <div id="detailsModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+      <div class="p-6 border-b border-gray-200">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xl font-semibold">Request Details</h2>
+          <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+            <i class="ri-close-line text-2xl"></i>
+          </button>
+        </div>
+      </div>
+      <div id="modalContent" class="p-6"></div>
+      <div class="p-6 border-t border-gray-200 flex justify-end gap-4">
+        <button id="rejectBtn" onclick="openRejectionModal()" class="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">
+          Reject
+        </button>
+        <button id="approveBtn" onclick="updateStatus(currentRequestId, 'Accepted')" class="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">
+          Approve
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rejection Reason Modal -->
+  <div id="rejectionModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+      <div class="p-6 border-b border-gray-200">
+        <h2 class="text-xl font-semibold">Rejection Reason</h2>
+      </div>
+      <div class="p-6">
+        <textarea id="rejectionReason" class="w-full border rounded-lg p-4" rows="4" placeholder="Enter the reason for rejection..."></textarea>
+      </div>
+      <div class="p-6 border-t border-gray-200 flex justify-end gap-4">
+        <button onclick="closeRejectionModal()" class="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400">Cancel</button>
+        <button onclick="submitRejection()" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">Submit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast"></div>
+
+  <script>
+    // Global variables
+    let jsonData = []; 
+    let currentRequestId = null;
+    let rejectionRequestId = null;
+    let isDataLoading = false; // Track loading state
+    let rawServerResponse = null; // Store the raw response from the server
+    
+    // Define constant ministry mappings to match server-side codes
+    const MINISTRY_NAMES = {
+      "MoT": "Ministry of Technology",
+      "MAA": "Ministry of Academic Affairs",
+      "MCWB": "Ministry of Community Wellbeing",
+      "Sports": "Sports Ministry",
+      "Jazbaa": "Cultural Ministry Jazbaa",
+      "Tarang": "Environment Ministry Tarang",
+      "CLM": "Campus Life Ministry",
+      "SG": "Student Government Reserve",
+      "PRD": "Public Relations Director",
+      "EC": "Election Commission"
+    };
+
+    // Show toast notification
+    function showToast(message, type = 'info') {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      
+      // Set color based on type
+      if (type === 'error') {
+        toast.style.backgroundColor = '#dc2626';
+      } else if (type === 'success') {
+        toast.style.backgroundColor = '#059669';
+      } else {
+        toast.style.backgroundColor = '#1e3a8a';
+      }
+      
+      toast.classList.add('show');
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3000);
+    }
+
+    // Debugging utility function with enhanced details
+    function debugDump(checkpointName, data) {
+      console.log(`===== DEBUG DUMP: ${checkpointName} =====`);
+      console.log('Data type:', typeof data);
+      console.log('Is array:', Array.isArray(data));
+      console.log('Length (if applicable):', data && (Array.isArray(data) || typeof data === 'string') ? data.length : 'N/A');
+      
+      if (data && typeof data === 'object') {
+        console.log('Keys:', Object.keys(data));
+        
+        // Sample the data
+        if (Array.isArray(data) && data.length > 0) {
+          console.log('First item sample:', data[0]);
+          if (data[0] && typeof data[0] === 'object') {
+            console.log('First item keys:', Object.keys(data[0]));
+          }
+        } else {
+          console.log('Sample data:', JSON.stringify(data).substring(0, 200) + '...');
+        }
+      }
+      
+      console.log('==============================');
+    }
+
+    // Enhanced function to fetch data with raw data preservation
+    function fetchData() {
+      console.log('Starting data fetch...');
+      
+      // Prevent duplicate requests
+      if (isDataLoading) {
+        console.log('Data fetch already in progress, skipping');
+        return;
+      }
+      
+      isDataLoading = true;
+      
+      // Show loading indicator
+      document.getElementById('requestsTable').innerHTML = `
+        <tr>
+          <td colspan="6" class="px-6 py-4 text-center">
+            <div class="flex justify-center items-center">
+              <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 7.962 7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span>Loading data...</span>
+            </div>
+          </td>
+        </tr>`;
+      
+      // Clear any previous status counts
+      document.getElementById('pendingCount').textContent = '0';
+      document.getElementById('approvedCount').textContent = '0';
+      document.getElementById('declinedCount').textContent = '0';
+      
+      // Directly call fetchAlldata
+      fetchAllData();
+      
+    }
+
+    // Function to get all data directly
+    function fetchAllData() {
+      showToast("Fetching complete spreadsheet data...");
+      document.getElementById('requestsTable').innerHTML = `
+        <tr>
+          <td colspan="6" class="px-6 py-4 text-center">
+            <div class="flex justify-center items-center">
+              <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 7.962 7.962 7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span>Fetching direct data...</span>
+            </div>
+          </td>
+        </tr>`;
+      
+      google.script.run
+        .withSuccessHandler(function(fullData) {
+          console.log("Direct data fetch successful", fullData);
+          rawServerResponse = fullData;
+          processAndDisplayData({ success: true, data: fullData });
+          updateDebugDataDisplay();
+        })
+        .withFailureHandler(function(error) {
+          console.error("Direct data fetch failed:", error);
+          showToast("Failed to fetch data: " + (error.message || "Unknown error"), "error");
+        })
+        .getAllSpreadsheetData();
+    }
+
+    // Enhanced debug tools
+    function addDebugTools() {
+      if (document.getElementById('debugTools')) return;
+      
+      const container = document.querySelector('.max-w-7xl');
+      const debugDiv = document.createElement('div');
+      debugDiv.id = 'debugTools';
+      debugDiv.className = 'mt-8 p-4 bg-gray-100 rounded-lg';
+      debugDiv.innerHTML = `
+        <h3 class="font-medium text-lg mb-2">Debug Tools</h3>
+        <div class="flex flex-wrap gap-2">
+          <button id="btnDirectFetch" class="px-4 py-2 bg-blue-700 text-white rounded-lg text-sm">
+            Direct Data Fetch
+          </button>
+          <button id="btnShowRawResponse" class="px-4 py-2 bg-purple-700 text-white rounded-lg text-sm">
+            Show Raw Server Response
+          </button>
+          <button id="btnShowProcessed" class="px-4 py-2 bg-green-700 text-white rounded-lg text-sm">
+            Show Processed Data
+          </button>
+          <button id="btnClearFilters" class="px-4 py-2 bg-gray-600 text-white rounded-lg text-sm">
+            Clear All Filters
+          </button>
+        </div>
+        <div id="debugDataSelect" class="mt-3 hidden">
+          <label class="text-sm font-medium">Debug Data View:</label>
+          <select id="debugDataType" class="ml-2 px-2 py-1 border rounded">
+            <option value="raw">Raw Server Response</option>
+            <option value="processed">Processed Data</option>
+            <option value="filtered">Filtered Data</option>
+          </select>
+        </div>
+        <div id="dataStats" class="mt-2 text-xs text-gray-700 hidden"></div>
+        <div id="rawDataDisplay" class="mt-4 hidden">
+          <pre class="bg-black text-green-500 p-4 rounded-lg overflow-auto max-h-96 text-xs"></pre>
+        </div>
+      `;
+      
+      container.appendChild(debugDiv);
+      
+      // Add event listeners for debug buttons
+      document.getElementById('btnDirectFetch').addEventListener('click', fetchAllData);
+      
+      document.getElementById('btnShowRawResponse').addEventListener('click', function() {
+        const display = document.getElementById('rawDataDisplay');
+        const pre = display.querySelector('pre');
+        const dataStats = document.getElementById('dataStats');
+        const dataSelect = document.getElementById('debugDataSelect');
+        
+        if (display.classList.contains('hidden')) {
+          display.classList.remove('hidden');
+          dataStats.classList.remove('hidden');
+          dataSelect.classList.remove('hidden');
+          updateDebugDataDisplay();
+          this.textContent = 'Hide Raw Response';
+        } else {
+          display.classList.add('hidden');
+          dataStats.classList.add('hidden');
+          dataSelect.classList.add('hidden');
+          this.textContent = 'Show Raw Server Response';
+        }
+      });
+      
+      document.getElementById('btnShowProcessed').addEventListener('click', function() {
+        const display = document.getElementById('rawDataDisplay');
+        const pre = display.querySelector('pre');
+        
+        if (display.classList.contains('hidden')) {
+          display.classList.remove('hidden');
+          pre.textContent = JSON.stringify(jsonData, null, 2);
+          this.textContent = 'Hide Processed Data';
+        } else {
+          display.classList.add('hidden');
+          this.textContent = 'Show Processed Data';
+        }
+      });
+      
+      document.getElementById('debugDataType').addEventListener('change', updateDebugDataDisplay);
+      
+      document.getElementById('btnClearFilters').addEventListener('click', function() {
+        document.getElementById('search').value = '';
+        document.getElementById('statusFilter').value = '';
+        applyFilters();
+      });
+    }
+    
+    // Update debug data display based on selection
+    function updateDebugDataDisplay() {
+      const display = document.getElementById('rawDataDisplay');
+      const pre = display.querySelector('pre');
+      const dataType = document.getElementById('debugDataType').value;
+      const dataStats = document.getElementById('dataStats');
+      
+      if (dataType === 'raw') {
+        pre.textContent = JSON.stringify(rawServerResponse, null, 2);
+        
+        // Show data stats
+        if (rawServerResponse) {
+          let statsText = "Raw server response: ";
+          if (Array.isArray(rawServerResponse)) {
+            statsText += `Array with ${rawServerResponse.length} items`;
+          } else if (typeof rawServerResponse === 'object') {
+            statsText += `Object with keys: ${Object.keys(rawServerResponse).join(', ')}`;
+          } else {
+            statsText += `Type: ${typeof rawServerResponse}`;
+          }
+          dataStats.textContent = statsText;
+        } else {
+          dataStats.textContent = "No raw data available";
+        }
+      } else if (dataType === 'processed') {
+        pre.textContent = JSON.stringify(jsonData, null, 2);
+        dataStats.textContent = `Processed data: ${jsonData ? jsonData.length : 0} requests`;
+      } else if (dataType === 'filtered') {
+        // Get currently filtered data
+        const searchTerm = document.getElementById('search').value.toLowerCase();
+        const statusFilter = document.getElementById('statusFilter').value.toLowerCase();
+        
+        const filteredData = jsonData.filter(request => {
+          const status = (request.ApprovalStatus || 'Pending').toLowerCase();
+          const matchesSearch = searchTerm === '' || 
+            request.RequestID.toLowerCase().includes(searchTerm) ||
+            request.Name.toLowerCase().includes(searchTerm) ||
+            (request.Ministry || '').toLowerCase().includes(searchTerm);
+          
+          const matchesStatus = statusFilter === '' || 
+            (statusFilter === 'pending' && (status === 'pending' || status === '')) ||
+            (statusFilter === 'approved' && (status.includes('accept') || status.includes('approve'))) ||
+            (statusFilter === 'declined' && (status.includes('decline') || status.includes('reject')));
+            
+          return matchesSearch && matchesStatus;
+        });
+        
+        pre.textContent = JSON.stringify(filteredData, null, 2);
+        dataStats.textContent = `Filtered data: ${filteredData.length} of ${jsonData.length} requests shown`;
+      }
+    }
+    
+    // Add a helper function to directly fetch the spreadsheet structure
+    function showSpreadsheetStructure() {
+      google.script.run
+        .withSuccessHandler(function(result) {
+          console.log("Spreadsheet structure:", result);
+          
+          // Show in debug view
+          const display = document.getElementById('rawDataDisplay');
+          const pre = display.querySelector('pre');
+          display.classList.remove('hidden');
+          pre.textContent = "SPREADSHEET STRUCTURE:\n" + JSON.stringify(result, null, 2);
+          
+          showToast("Retrieved spreadsheet structure", "success");
+        })
+        .withFailureHandler(function(error) {
+          console.error("Error getting spreadsheet structure:", error);
+          showToast("Failed to get spreadsheet structure: " + error.message, "error");
+        })
+        .testSpreadsheetAccess();
+    }
+    
+    // Modified to enhance the function to fetch full spreadsheet data
+    function fetchFullData(initialData) {
+      document.getElementById('requestsTable').innerHTML = `
+        <tr>
+          <td colspan="6" class="px-6 py-4 text-center">
+            <div class="flex justify-center items-center">
+              <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 7.962 7.962 7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span>Processing data...</span>
+            </div>
+          </td>
+        </tr>`;
+      
+      google.script.run
+        .withSuccessHandler(function(fullData) {
+          console.log("Full spreadsheet data received");
+          
+          if (!fullData || fullData.error) {
+            handleDataError(fullData || { message: "Failed to retrieve complete data" });
+            return;
+          }
+          
+          // Store the raw response for debugging
+          rawServerResponse = fullData;
+          
+          // Check the structure
+          console.log("Full data type:", typeof fullData);
+          if (Array.isArray(fullData)) {
+            console.log("Full data is an array with", fullData.length, "items");
+            if (fullData.length > 0) {
+              console.log("First row type:", typeof fullData[0]);
+              console.log("First row is array?", Array.isArray(fullData[0]));
+              if (Array.isArray(fullData[0])) {
+                console.log("First row length:", fullData[0].length);
+              }
+            }
+          } else {
+            console.log("Full data is not an array, it's a", typeof fullData);
+          }
+          
+          // Update the debug UI if it's visible
+          if (!document.getElementById('rawDataDisplay').classList.contains('hidden')) {
+            updateDebugDataDisplay();
+          }
+          
+          processAndDisplayData({ success: true, data: fullData });
+        })
+        .withFailureHandler(function(error) {
+          console.error("Failed to fetch full data:", error);
+          handleDataError(error);
+          isDataLoading = false;
+        })
+        .getAllSpreadsheetData();
+    }
+
+    // Modify DOMContentLoaded event to add debug tools
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('DOM loaded - Setting up event listeners');
+      
+      // Add debug tools in development
+      addDebugTools();
+      
+      // Add a button to check spreadsheet structure
+      const debugDiv = document.getElementById('debugTools');
+      const spreadsheetBtn = document.createElement('button');
+      spreadsheetBtn.textContent = 'Check Spreadsheet Structure';
+      spreadsheetBtn.className = 'mt-2 px-4 py-2 bg-yellow-600 text-white rounded-lg text-sm';
+      spreadsheetBtn.addEventListener('click', showSpreadsheetStructure);
+      debugDiv.querySelector('.flex').appendChild(spreadsheetBtn);
+      
+      // Fetch data on load
+      fetchData();
+      
+      // Set up search and filter functionality
+      document.getElementById('search').addEventListener('input', applyFilters);
+      document.getElementById('statusFilter').addEventListener('change', applyFilters);
+    });
+
+    // Ensure data is loaded when page is fully loaded
+    window.addEventListener('load', function() {
+      console.log('Window loaded - Ensuring data is fetched');
+      if (jsonData.length === 0) {
+        fetchData();
+      }
+    });
+    
+    // Process and display data with enhanced error handling
+    function processAndDisplayData(response) {
+      try {
+        console.log("Processing full data...");
+        const fullData = response.data;
+        
+        if (!fullData || !Array.isArray(fullData)) {
+          throw new Error("Invalid data format received from server");
+        }
+
+        // Extract headers and rows
+        const headers = fullData[0] || [];
+        if (headers.length === 0) {
+          throw new Error("Header row is missing or empty");
+        }
+        
+        const rows = fullData.slice(1);  // Skip header row
+        
+        console.log(`Processing data with ${headers.length} headers and ${rows.length} rows`);
+        console.log("First few headers:", headers.slice(0, 5));
+        if (rows.length > 0) {
+          console.log("First row sample:", rows[0].slice(0, 5));
+        }
+        
+        // Convert data for processing - ensure proper structure
+        const rawData = {
+          success: true,
+          headers: headers,
+          rows: rows
+        };
+        
+        // Try the fixed function first
+        jsonData = processRawDataFixed(rawData);
+        
+        // If nothing came back, try the original function
+        if (!jsonData || jsonData.length === 0) {
+          console.warn("Fixed processing function returned no data, trying original function");
+          jsonData = processRawData(rawData);
+        }
+        
+        debugDump('Processed jsonData', jsonData);
+        
+        if (!jsonData || jsonData.length === 0) {
+          document.getElementById('requestsTable').innerHTML = `
+            <tr>
+              <td colspan="6" class="px-6 py-4 text-center">
+                <div class="text-yellow-500 font-medium">No Requests Found</div>
+                <div class="text-sm text-gray-500 mt-1">
+                  No valid reimbursement requests were found in the spreadsheet.
+                </div>
+                <div class="mt-3">
+                  <button onclick="showDataFixHelp()" class="px-4 py-2 bg-blue-500 text-white rounded-lg">
+                    Show Data Fix Help
+                  </button>
+                </div>
+              </td>
+            </tr>`;
+          return;
+        }
+        
+        // Render the table and update status counts
+        renderTable(jsonData);
+        updateStatusCounts(jsonData);
+        
+        // Show success message
+        showToast(`Loaded ${jsonData.length} reimbursement requests`, "success");
+        
+      } catch (error) {
+        console.error("Error in processAndDisplayData:", error);
+        document.getElementById('requestsTable').innerHTML = `
+          <tr>
+            <td colspan="6" class="px-6 py-4 text-center">
+              <div class="text-red-500 font-medium">Data Processing Error</div>
+              <div class="text-sm text-gray-500 mt-1">${error.message}</div>
+              <div class="text-xs text-gray-400 mt-1">Error occurred while processing the spreadsheet data.</div>
+              <button onclick="fetchData()" class="mt-3 px-4 py-2 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600">
+                Retry
+              </button>
+              <button onclick="showDataFixHelp()" class="mt-3 ml-2 px-4 py-2 bg-yellow-500 text-white text-sm rounded-lg hover:bg-yellow-600">
+                Show Data Fix Help
+              </button>
+            </td>
+          </tr>`;
+          
+        showToast("Error processing data: " + error.message, "error");
+      }
+    }
+
+    // New improved data processing function to fix empty array issue
+    function processRawDataFixed(data) {
+      console.log('Processing raw data with fixed function');
+      
+      // Verify data structure
+      if (!data || !data.headers || !data.rows || !Array.isArray(data.headers) || !Array.isArray(data.rows)) {
+        console.error('Invalid data structure:', data);
+        return [];
+      }
+      
+      // 1. Extract and detect column indices - be very flexible with column names
+      const headers = data.headers;
+      const rows = data.rows;
+      
+      console.log(`Processing ${rows.length} rows with ${headers.length} columns`);
+      
+      // 2. Define helper for finding column index with flexible matching
+      function findColumnIndex(possibleNames) {
+        for (let name of possibleNames) {
+          for (let i = 0; i < headers.length; i++) {
+            const headerText = headers[i]?.toString().toLowerCase() || '';
+            const searchText = name.toLowerCase();
+            
+            if (headerText === searchText || 
+                headerText.includes(searchText) || 
+                searchText.includes(headerText)) {
+              console.log(`Found column "${name}" at index ${i}: ${headers[i]}`);
+              return i;
+            }
+          }
+        }
+        console.warn(`Could not find column matching any of: [${possibleNames.join(', ')}]`);
+        return -1;
+      }
+      
+      // 3. Map important columns
+      const colIndices = {
+        requestId: findColumnIndex(['request id', 'requestid', 'request_id', 'id']),
+        name: findColumnIndex(['name', 'requester', 'requestor']),
+        email: findColumnIndex(['email']),
+        ministry: findColumnIndex(['ministry']),
+        designation: findColumnIndex(['designation', 'poc designation']),
+        regNumber: findColumnIndex(['registration number', 'reg number', 'poc reg']),
+        upi: findColumnIndex(['upi id', 'upi']),
+        category: findColumnIndex(['payment category', 'expense category', 'category']),
+        amount: findColumnIndex(['amount']),
+        justification: findColumnIndex(['justification']),
+        paymentMode: findColumnIndex(['payment mode']),
+        paymentDate: findColumnIndex(['payment date', 'expense date']),
+        receiptLink: findColumnIndex(['receipt link', 'receipt']),
+        status: findColumnIndex(['approval status', 'status']),
+        submissionDate: findColumnIndex(['date of submission', 'submission date'])
+      };
+      
+      console.log('Column mappings:', colIndices);
+      
+      // 4. Check if we found at least requestId and amount columns (critical)
+      if (colIndices.requestId === -1) {
+        console.error('Could not locate Request ID column - cannot process data');
+        return [];
+      }
+      
+      // 5. Group data by Request ID
+      const requestsMap = new Map();
+      let processedCount = 0;
+      
+      rows.forEach((row, rowIndex) => {
+        try {
+          // Skip empty rows
+          if (!row || row.length === 0 || row.every(cell => !cell)) return;
+          
+          // Helper to get value safely
+          const getValue = (colIndex) => colIndex !== -1 && colIndex < row.length ? row[colIndex] : null;
+          
+          // Get Request ID - this is the primary key
+          const requestId = getValue(colIndices.requestId);
+          if (!requestId) {
+            return; // Skip rows without request ID
+          }
+          
+          // Log detailed data for the first few rows for debugging
+          if (rowIndex < 3) {
+            console.log(`Row ${rowIndex + 1} Request ID:`, requestId);
+            console.log(`Row ${rowIndex + 1} data:`, {
+              name: getValue(colIndices.name),
+              amount: getValue(colIndices.amount),
+              category: getValue(colIndices.category),
+              status: getValue(colIndices.status)
+            });
+          }
+          
+          // Extract expense details
+          const expenseAmount = getValue(colIndices.amount);
+          const parsedAmount = typeof expenseAmount === 'number' ? 
+            expenseAmount : 
+            parseFloat(expenseAmount?.toString().replace(/[^\d.-]/g, '') || '0');
+            
+          const expense = {
+            Category: getValue(colIndices.category) || 'Uncategorized',
+            Amount: parsedAmount || 0,
+            Justification: getValue(colIndices.justification) || '',
+            PaymentMode: getValue(colIndices.paymentMode) || '',
+            PaymentDate: getValue(colIndices.paymentDate) || '',
+            ReceiptLink: getValue(colIndices.receiptLink) || ''
+          };
+          
+          // Extract other fields
+          const status = getValue(colIndices.status) || 'Pending';
+          
+          // Group by Request ID
+          if (requestsMap.has(requestId)) {
+            // Add to existing request
+            const existingRequest = requestsMap.get(requestId);
+            existingRequest.Expenses.push(expense);
+            existingRequest.TotalAmount += expense.Amount;
+          } else {
+            // Create new request
+            requestsMap.set(requestId, {
+              RequestID: requestId,
+              Name: getValue(colIndices.name) || '',
+              Email: getValue(colIndices.email) || '',
+              UPI: getValue(colIndices.upi) || '',
+              Ministry: getValue(colIndices.ministry) || '',
+              Designation: getValue(colIndices.designation) || '',
+              RegistrationNumber: getValue(colIndices.regNumber) || '',
+              ApprovalStatus: status,
+              SubmissionDate: getValue(colIndices.submissionDate) || '',
+              Reason: '',  // Reason column not directly mapped
+              Expenses: [expense],
+              TotalAmount: expense.Amount
+            });
+            processedCount++;
+          }
+        } catch (error) {
+          console.error(`Error processing row ${rowIndex + 1}:`, error);
+        }
+      });
+      
+      // Return the grouped data as an array
+      const result = Array.from(requestsMap.values());
+      console.log(`Processed ${result.length} unique requests with ${processedCount} expense entries`);
+      
+      return result;
+    }
+
+    // Show help for fixing data issues
+    function showDataFixHelp() {
+      // Show a popup with helpful information
+      const helpContent = `
+        <div class="bg-white p-6 rounded-lg shadow-lg max-w-2xl max-h-[80vh] overflow-y-auto">
+          <h2 class="text-xl font-bold mb-4 text-primary">Data Processing Help</h2>
+          
+          <p class="mb-4">The dashboard is having trouble processing your data. Here are some things to check:</p>
+          
+          <ol class="list-decimal pl-6 space-y-2 mb-4">
+            <li>Verify that your spreadsheet has a <strong>Request ID</strong> column</li>
+            <li>Ensure each row has a unique Request ID starting with "REQ-"</li>
+            <li>Check that you have columns for Name, Email, Ministry, and Amount</li>
+            <li>Verify that the Amount column contains only numbers</li>
+            <li>Check if there are any duplicate column names</li>
+          </ol>
+          
+          <div class="mt-6 p-4 bg-gray-100 rounded-lg">
+            <h3 class="font-semibold mb-2">Debug Information:</h3>
+            <pre class="text-xs overflow-x-auto">Headers: ${JSON.stringify(rawServerResponse?.[0] || [])}</pre>
+          </div>
+          
+          <div class="mt-6 flex justify-end">
+            <button onclick="this.closest('div.fixed').remove()" class="px-4 py-2 bg-primary text-white rounded-lg">
+              Close
+            </button>
+          </div>
+        </div>
+      `;
+      
+      // Create and show the popup
+      const popup = document.createElement('div');
+      popup.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+      popup.innerHTML = helpContent;
+      document.body.appendChild(popup);
+    }
+
+    // Render the requests table with the processed data
+    function renderTable(data) {
+      console.log('Rendering table with data:', data);
+      const tableBody = document.getElementById('requestsTable');
+      tableBody.innerHTML = '';
+      
+      if (!data || data.length === 0) {
+        tableBody.innerHTML = `
+          <tr>
+            <td colspan="6" class="px-6 py-4 text-center">No requests found</td>
+          </tr>`;
+        return;
+      }
+      
+      // Apply search filter if any
+      const searchTerm = document.getElementById('search').value.toLowerCase();
+      const statusFilter = document.getElementById('statusFilter').value.toLowerCase();
+      
+      console.log(`Applying filters: searchTerm="${searchTerm}", statusFilter="${statusFilter}"`);
+      
+      const filteredData = data.filter(request => {
+        // Debug each request's status
+        if (!request.ApprovalStatus) {
+          console.log(`Request ${request.RequestID} has no status, defaulting to "Pending"`);
+        }
+        
+        // More flexible search matching
+        const matchesSearch = searchTerm === '' || 
+          (request.RequestID && request.RequestID.toLowerCase().includes(searchTerm)) ||
+          (request.Name && request.Name.toLowerCase().includes(searchTerm)) ||
+          (request.Ministry && MINISTRY_NAMES[request.Ministry] ? 
+            MINISTRY_NAMES[request.Ministry].toLowerCase().includes(searchTerm) : 
+            (request.Ministry || '').toLowerCase().includes(searchTerm));
+        
+        // More reliable status matching - case insensitive and normalized
+        const status = (request.ApprovalStatus || 'Pending').toLowerCase();
+        const matchesStatus = 
+          statusFilter === '' || 
+          (statusFilter === 'pending' && (status === 'pending' || status === '')) ||
+          (statusFilter === 'approved' && (status.includes('accept') || status.includes('approve'))) ||
+          (statusFilter === 'declined' && (status.includes('decline') || status.includes('reject')));
+            
+        return matchesSearch && matchesStatus;
+      });
+      
+      console.log(`Filtered data has ${filteredData.length} items after filtering from ${data.length} original items`);
+      
+      if (filteredData.length === 0) {
+        tableBody.innerHTML = `
+          <tr>
+            <td colspan="6" class="px-6 py-4 text-center">No matching requests found</td>
+          </tr>`;
+        return;
+      }
+      
+      // Sort by submission date (newest first) if available
+      filteredData.sort((a, b) => {
+        if (a.SubmissionDate && b.SubmissionDate) {
+          return new Date(b.SubmissionDate) - new Date(a.SubmissionDate);
+        }
+        return 0;
+      });
+      
+      filteredData.forEach(request => {
+        // Map the status to a style
+        let statusClass = '';
+        let statusText = request.ApprovalStatus || 'Pending';
+        
+        if (statusText.toLowerCase().includes('accept') || statusText.toLowerCase().includes('approve')) {
+          statusClass = 'bg-green-100 text-green-800';
+          statusText = 'Approved';
+        } else if (statusText.toLowerCase().includes('decline') || statusText.toLowerCase().includes('reject')) {
+          statusClass = 'bg-red-100 text-red-800';
+          statusText = 'Declined';
+        } else {
+          statusClass = 'bg-orange-100 text-orange-800';
+          statusText = 'Pending';
+        }
+        
+        // Format the amount with commas and decimal places
+        const formattedAmount = new Intl.NumberFormat('en-IN', {
+          maximumFractionDigits: 2,
+          minimumFractionDigits: 2
+        }).format(request.TotalAmount || 0);
+        
+        // Get the full ministry name if available
+        const ministryName = request.Ministry && MINISTRY_NAMES[request.Ministry] ? 
+                            MINISTRY_NAMES[request.Ministry] : request.Ministry || 'Unknown';
+        
+        const row = document.createElement('tr');
+        row.className = 'hover:bg-gray-50 border-b border-gray-200';
+        row.innerHTML = `
+          <td class="px-6 py-4">${request.RequestID}</td>
+          <td class="px-6 py-4">${request.Name}</td>
+          <td class="px-6 py-4">${ministryName}</td>
+          <td class="px-6 py-4">${formattedAmount}</td>
+          <td class="px-6 py-4">
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClass}">
+              ${statusText}
+            </span>
+          </td>
+          <td class="px-6 py-4">
+            <button onclick="showRequestDetails('${request.RequestID}')" class="text-primary hover:text-blue-700">
+              <i class="ri-eye-line text-lg"></i>
+            </button>
+          </td>
+        `;
+        
+        tableBody.appendChild(row);
+      });
+    }
+
+    // Update the status counts in the dashboard cards
+    function updateStatusCounts(data) {
+      if (!data) return;
+      
+      let pendingCount = 0;
+      let approvedCount = 0;
+      let declinedCount = 0;
+      
+      data.forEach(request => {
+        const status = (request.ApprovalStatus || 'Pending').toLowerCase();
+        
+        if (status.includes('accept') || status.includes('approve')) {
+          approvedCount++;
+        } else if (status.includes('decline') || status.includes('reject')) {
+          declinedCount++;
+        } else {
+          pendingCount++;
+        }
+      });
+      
+      document.getElementById('pendingCount').textContent = pendingCount;
+      document.getElementById('approvedCount').textContent = approvedCount;
+      document.getElementById('declinedCount').textContent = declinedCount;
+    }
+
+    // Close the request details modal
+    function closeModal() {
+      document.getElementById('detailsModal').classList.add('hidden');
+      currentRequestId = null;
+    }
+
+    // Enhanced open rejection modal function - ensure the request ID is saved properly
+    function openRejectionModal() {
+      // Store the current request ID for the rejection process
+      rejectionRequestId = currentRequestId;
+      
+      console.log(`Opening rejection modal for request: ${rejectionRequestId}`);
+      
+      // Clear any previous rejection reason
+      document.getElementById('rejectionReason').value = '';
+      
+      // Show the modal
+      document.getElementById('rejectionModal').classList.remove('hidden');
+    }
+
+    // Enhanced submit rejection function with better debugging and feedback
+    function submitRejection() {
+      const reason = document.getElementById('rejectionReason').value.trim();
+      console.log(`Submitting rejection for request ID: ${rejectionRequestId}, reason: ${reason}`);
+      
+      // Validate that the reason is provided
+      if (!reason) {
+        showToast("Please provide a reason for rejection", "error");
+        return;
+      }
+      
+      // Validate that we have a request ID
+      if (!rejectionRequestId) {
+        console.error("Missing rejection request ID");
+        showToast("Error: Could not identify the request to reject", "error");
+        closeRejectionModal();
+        return;
+      }
+      
+      // Show processing message directly in the modal
+      const submitButton = document.querySelector('#rejectionModal button:last-child');
+      const originalButtonText = submitButton.textContent;
+      submitButton.disabled = true;
+      submitButton.innerHTML = `
+        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 inline-block text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 7.962 7.962 7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        Processing...
+      `;
+      
+      // Add specific rejection confirmation toast
+      showToast("Processing rejection...", "info");
+      
+      // Update the status with reason
+      updateStatus(rejectionRequestId, 'Declined', reason);
+      
+      // Clear the rejectionRequestId after submission
+      rejectionRequestId = null;
+    }
+
+    // Enhanced updateStatus function to improve debugging and feedback
+    function updateStatus(requestId, newStatus, reason = '') {
+      if (!requestId) {
+        console.error('No request ID provided for status update');
+        showToast("Error: Missing request ID", "error");
+        return;
+      }
+      
+      console.log(`Starting status update for request ${requestId} to "${newStatus}"${reason ? ' with reason: ' + reason : ''}`);
+      
+      // Close all modals
+      closeModal();
+      closeRejectionModal();
+      
+      // Show loading status in table
+      const loadingMessage = newStatus === 'Accepted' ? 'Approving request...' : 'Declining request...';
+      document.getElementById('requestsTable').innerHTML = `
+        <tr>
+          <td colspan="6" class="px-6 py-4 text-center">
+            <div class="flex justify-center items-center">
+              <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 7.962 7.962 7.962 7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span>${loadingMessage}</span>
+            </div>
+          </td>
+        </tr>`;
+      
+      // Show toast notification
+      showToast(loadingMessage, "info");
+      
+      // Prepare request data in the standardized object format
+      const requestData = {
+        requestId: requestId,
+        status: newStatus,
+        reason: reason
+      };
+      
+      // Add message about document generation for approvals
+      if (newStatus === 'Accepted') {
+        showToast("Generating approval documents, please wait...", "info");
+      }
+      
+      // Send status update to the server
+      console.log(`Sending request to server: ${JSON.stringify(requestData)}`);
+      
+      // Add a delay to ensure UI updates are visible
+      setTimeout(() => {
+        google.script.run
+          .withSuccessHandler(function(response) {
+            console.log('Status update response from server:', response);
+            
+            if (response && response.success) {
+              // Build a detailed confirmation message
+              let confirmMessage = "";
+              if (newStatus === 'Accepted') {
+                confirmMessage = `Request ${requestId} approved successfully!`;
+                if (response.documentLink) {
+                  confirmMessage += ` <a href="${response.documentLink}" target="_blank" class="underline">View Approval Document</a>`;
+                }
+              } else {
+                confirmMessage = `Request ${requestId} declined with reason: "${reason}"`;
+              }
+              
+              // Show success message
+              showToast(confirmMessage, "success");
+              
+              // Also show a more persistent confirmation message at the top of the page
+              const container = document.querySelector('.max-w-7xl');
+              const confirmationBanner = document.createElement('div');
+              confirmationBanner.className = 'bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded';
+              confirmationBanner.innerHTML = `
+                <div class="flex items-center">
+                  <div class="flex-shrink-0">
+                    <i class="${newStatus === 'Accepted' ? 'ri-check-line' : 'ri-close-line'} text-xl"></i>
+                  </div>
+                  <div class="ml-3">
+                    <p class="text-sm font-medium">${confirmMessage}</p>
+                    <p class="text-xs mt-1">The requester will be notified via email${newStatus === 'Accepted' ? ' with approval documents' : ''}.</p>
+                    ${response.documentLink ? `
+                    <div class="mt-2">
+                      <a href="${response.documentLink}" target="_blank" class="text-sm text-blue-600 hover:underline flex items-center">
+                        <i class="ri-file-text-line mr-1"></i> View Approval Document
+                      </a>
+                    </div>` : ''}
+                    ${response.receiptsPDF ? `
+                    <div class="mt-1">
+                      <a href="${response.receiptsPDF}" target="_blank" class="text-sm text-blue-600 hover:underline flex items-center">
+                        <i class="ri-file-pdf-line mr-1"></i> View Receipts PDF
+                      </a>
+                    </div>` : ''}
+                  </div>
+                  <button onclick="this.parentNode.parentNode.remove()" class="ml-auto text-green-500 hover:text-green-700">
+                    <i class="ri-close-line"></i>
+                  </button>
+                </div>
+              `;
+              
+              // Insert at the top, below the header
+              const header = container.querySelector('.flex.items-center.justify-between.mb-8');
+              container.insertBefore(confirmationBanner, header.nextSibling);
+              
+              // Automatically remove the banner after 20 seconds
+              setTimeout(() => {
+                if (confirmationBanner.parentNode) {
+                  confirmationBanner.remove();
+                }
+              }, 20000);
+              
+              // Refresh the data to see the updated status
+              fetchData();
+            } else {
+              // Show error message
+              const errorMsg = response && response.message ? response.message : 'Unknown error occurred';
+              document.getElementById('requestsTable').innerHTML = `
+                <tr>
+                  <td colspan="6" class="px-6 py-4 text-center">
+                    <div class="text-red-500 font-medium">Update Failed</div>
+                    <div class="text-sm text-gray-500 mt-1">
+                      ${errorMsg}
+                    </div>
+                    <button onclick="fetchData()" class="mt-3 px-4 py-2 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600">
+                      Refresh Data
+                    </button>
+                  </td>
+                </tr>`;
+                  
+              showToast("Failed to update status: " + errorMsg, "error");
+            }
+          })
+          .withFailureHandler(function(error) {
+            console.error('Status update error:', error);
+            
+            document.getElementById('requestsTable').innerHTML = `
+              <tr>
+                <td colspan="6" class="px-6 py-4 text-center">
+                  <div class="text-red-500 font-medium">Update Failed</div>
+                  <div class="text-sm text-gray-500 mt-1">
+                    ${error.message || 'An error occurred while updating the status.'}
+                  </div>
+                  <button onclick="fetchData()" class="mt-3 px-4 py-2 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600">
+                    Refresh Data
+                  </button>
+                </td>
+              </tr>`;
+              
+            showToast("Failed to update status: " + (error.message || "Server error"), "error");
+          })
+          .updateRequestStatus(requestData);
+      }, 500); // Small delay for better UX
+    }
+
+    // Enhanced function to close the rejection modal
+    function closeRejectionModal() {
+      console.log('Closing rejection modal');
+      document.getElementById('rejectionModal').classList.add('hidden');
+      
+      // Reset any processing state on the submit button
+      const submitButton = document.querySelector('#rejectionModal button:last-child');
+      submitButton.disabled = false;
+      submitButton.textContent = 'Submit';
+      
+      // Clear the rejection request ID
+      rejectionRequestId = null;
+    }
+
+    // Fill in request details for the modal
+    function showRequestDetails(requestId) {
+      currentRequestId = requestId;
+      
+      const request = jsonData.find(req => req.RequestID === requestId);
+      if (!request) {
+        console.error(`Request with ID ${requestId} not found`);
+        return;
+      }
+      
+      const ministryName = request.Ministry && MINISTRY_NAMES[request.Ministry] ? 
+                          MINISTRY_NAMES[request.Ministry] : request.Ministry || 'Unknown';
+      
+      // Format the date if available
+      let formattedSubmissionDate = 'Not specified';
+      if (request.SubmissionDate) {
+        try {
+          formattedSubmissionDate = new Date(request.SubmissionDate).toLocaleDateString('en-IN', {
+            year: 'numeric', month: 'long', day: 'numeric'
+          });
+        } catch (e) {
+          formattedSubmissionDate = request.SubmissionDate;
+        }
+      }
+      
+      let modalContent = `
+        <div class="space-y-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <h3 class="text-sm font-medium text-gray-500">Request ID</h3>
+              <p class="mt-1 text-sm text-gray-900">${request.RequestID}</p>
+            </div>
+            <div>
+              <h3 class="text-sm font-medium text-gray-500">Submission Date</h3>
+              <p class="mt-1 text-sm text-gray-900">${formattedSubmissionDate}</p>
+            </div>
+            <div>
+              <h3 class="text-sm font-medium text-gray-500">Requester</h3>
+              <p class="mt-1 text-sm text-gray-900">${request.Name}</p>
+            </div>
+            <div>
+              <h3 class="text-sm font-medium text-gray-500">Email</h3>
+              <p class="mt-1 text-sm text-gray-900">${request.Email || 'Not provided'}</p>
+            </div>
+            <div>
+              <h3 class="text-sm font-medium text-gray-500">Ministry</h3>
+              <p class="mt-1 text-sm text-gray-900">${ministryName}</p>
+            </div>
+            <div>
+              <h3 class="text-sm font-medium text-gray-500">Designation</h3>
+              <p class="mt-1 text-sm text-gray-900">${request.Designation || 'Not provided'}</p>
+            </div>
+            <div>
+              <h3 class="text-sm font-medium text-gray-500">Registration Number</h3>
+              <p class="mt-1 text-sm text-gray-900">${request.RegistrationNumber || 'Not provided'}</p>
+            </div>
+            <div>
+              <h3 class="text-sm font-medium text-gray-500">Status</h3>
+              <p class="mt-1 text-sm text-gray-900">${request.ApprovalStatus || 'Pending'}</p>
+            </div>
+            <div>
+              <h3 class="text-sm font-medium text-gray-500">UPI ID</h3>
+              <p class="mt-1 text-sm text-gray-900">${request.UPI || 'Not provided'}</p>
+            </div>
+            <div>
+              <h3 class="text-sm font-medium text-gray-500">Total Amount</h3>
+              <p class="mt-1 text-sm text-gray-900">₹${new Intl.NumberFormat('en-IN', {
+                maximumFractionDigits: 2,
+                minimumFractionDigits: 2
+              }).format(request.TotalAmount || 0)}</p>
+            </div>
+          </div>
+          
+          <div>
+            <h3 class="text-lg font-medium text-gray-900 mb-3">Expenses</h3>
+            <div class="bg-gray-50 rounded-lg divide-y divide-gray-200">
+              ${request.Expenses.map((expense, index) => `
+                <div class="p-4">
+                  <div class="flex items-center justify-between mb-2">
+                    <h4 class="text-base font-medium text-gray-900">Expense #${index + 1}: ${expense.Category}</h4>
+                    <span class="text-sm font-semibold text-primary">₹${new Intl.NumberFormat('en-IN', {
+                      maximumFractionDigits: 2,
+                      minimumFractionDigits: 2
+                    }).format(expense.Amount)}</span>
+                  </div>
+                  <div class="text-sm text-gray-600 mb-2">${expense.Justification || 'No justification provided'}</div>
+                  <div class="flex flex-wrap gap-2 text-xs text-gray-500">
+                    <span class="bg-gray-100 px-2 py-1 rounded-full">${expense.PaymentMode || 'Payment mode not specified'}</span>
+                    <span class="bg-gray-100 px-2 py-1 rounded-full">${expense.PaymentDate || 'Date not specified'}</span>
+                    ${expense.ReceiptLink ? `
+                      <a href="${expense.ReceiptLink}" target="_blank" rel="noopener" class="bg-blue-100 text-blue-700 px-2 py-1 rounded-full hover:bg-blue-200">View Receipt</a>
+                    ` : '<span class="bg-gray-100 px-2 py-1 rounded-full">No receipt</span>'}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+          
+          ${request.Reason ? `
+            <div>
+              <h3 class="text-sm font-medium text-gray-500">Reason (if declined)</h3>
+              <p class="mt-1 text-sm text-gray-900">${request.Reason}</p>
+            </div>
+          ` : ''}
+        </div>
+      `;
+      
+      document.getElementById('modalContent').innerHTML = modalContent;
+      document.getElementById('detailsModal').classList.remove('hidden');
+      
+      // Show/hide approval buttons based on current status
+      const status = (request.ApprovalStatus || '').toLowerCase();
+      const isPending = !status || status === 'pending';
+      
+      document.getElementById('approveBtn').style.display = isPending ? 'block' : 'none';
+      document.getElementById('rejectBtn').style.display = isPending ? 'block' : 'none';
+    }
+
+    // Apply search and status filters
+    function applyFilters() {
+      console.log('Applying filters to data');
+      renderTable(jsonData);
+    }
+  </script>
+</body>
+</html>

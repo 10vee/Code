@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reimbursement Form</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1e3a8a',
+                        secondary: '#dc2626'
+                    },
+                    borderRadius: {
+                        'none': '0px',
+                        'sm': '4px',
+                        DEFAULT: '8px',
+                        'md': '12px',
+                        'lg': '16px',
+                        'xl': '20px',
+                        '2xl': '24px',
+                        '3xl': '32px',
+                        'full': '9999px',
+                        'button': '8px'
+                    }
+                }
+            }
+        };
+    </script>
+    <style>
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .payment-option {
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            cursor: pointer;
+        }
+
+        .payment-option:hover {
+            background-color: #f3f4f6;
+        }
+
+        .payment-option.selected {
+            background-color: #1e3a8a;
+            color: #ffffff;
+            border: 2px solid #1e3a8a;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="max-w-4xl mx-auto p-6">
+        <div class="text-center mb-8">
+            <img src="https://sg.ashoka.edu.in/platform/assets/images/logos/SGLogo.png" alt="Logo" class="w-32 h-32 mx-auto mb-4">
+            <h1 class="text-3xl font-bold text-primary">Reimbursement Form</h1>
+        </div>
+        <form id="reimbursementForm" class="bg-white shadow-lg rounded-lg p-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Name <span class="text-red-600">*</span></label>
+                    <input type="text" id="name" placeholder="Your Name" required class="w-full px-4 py-2 border rounded-button focus:ring-2 focus:ring-primary focus:border-primary">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Email <span class="text-red-600">*</span></label>
+                    <input type="email" id="email" placeholder="Your Email (ashoka.edu.in)" required class="w-full px-4 py-2 border rounded-button focus:ring-2 focus:ring-primary focus:border-primary">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Ministry <span class="text-red-600">*</span></label>
+                    <select id="ministry" required class="w-full px-4 py-2 border rounded-button focus:ring-2 focus:ring-primary focus:border-primary">
+                        <option value="" disabled selected>Select Ministry</option>
+                        <option value="MoT">Ministry of Technology</option>
+                        <option value="Tarang">Environment Ministry Tarang</option>
+                        <option value="MAA">Ministry of Academic Affairs</option>
+                        <option value="CLM">Campus Life Ministry</option>
+                        <option value="MCWB">Ministry of Community Wellbeing</option>
+                        <option value="Jazbaa">Cultural Ministry Jazbaa</option>
+                        <option value="PRD">Public Relations Director</option>
+                        <option value="EC">Election Commission</option>
+                        <option value="SG">Student Government Reserve</option>
+                        <option value="Sports">Sports Ministry</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">PoC Designation <span class="text-red-600">*</span></label>
+                    <input type="text" id="poc-designation" placeholder="Designation" required class="w-full px-4 py-2 border rounded-button focus:ring-2 focus:ring-primary focus:border-primary">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">PoC Registration Number <span class="text-red-600">*</span></label>
+                    <input type="text" id="poc-reg" placeholder="Registration Number (10 digits)" required 
+                           pattern="[0-9]{10}" maxlength="10" 
+                           oninput="this.value = this.value.replace(/\D/g, '').slice(0, 10)" 
+                           class="w-full px-4 py-2 border rounded-button focus:ring-2 focus:ring-primary focus:border-primary">
+                    <p class="text-xs text-gray-500 mt-1">Must be exactly 10 digits</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">PoC UPI ID (Optional)</label>
+                    <input type="text" id="poc-upi" placeholder="PoC UPI ID" class="w-full px-4 py-2 border rounded-button focus:ring-2 focus:ring-primary focus:border-primary">
+                </div>
+            </div>
+            <div class="text-lg font-medium text-gray-700 mb-4">
+                Total Expenses: <span id="expense-counter">0</span>
+            </div>
+            <div id="expense-sections"></div>
+            <button id="add-expense" disabled type="button" class="mb-6 flex items-center px-4 py-2 bg-secondary text-white rounded-button hover:bg-red-700 transition-colors">
+                <i class="ri-add-line mr-2"></i> Add Expense
+            </button>
+            <button type="button" id="submit-button" class="w-full px-6 py-3 bg-primary text-white rounded-button hover:bg-blue-900 transition-colors font-medium">
+                Submit Reimbursement Form
+            </button>
+        </form>
+    </div>
+    <div id="popup" class="hidden fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+        <div class="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
+            <h2 id="popup-title" class="text-lg font-bold text-primary mb-4">Popup Title</h2>
+            <p id="popup-message" class="text-gray-700 mb-6">Popup message goes here.</p>
+            <button id="popup-close" class="w-full px-4 py-2 bg-primary text-white rounded-button hover:bg-blue-900 transition-colors">
+                Close
+            </button>
+        </div>
+    </div>
+    <script>
+        let expenseCount = 0;  // Global counter to track number of expenses
+        let expenseIdCounter = 0; // Counter for generating unique IDs
+        const expenseCategories = {
+            MoT: ["Websites", "Washing Machine Status Checker", "Events", "Marketing"],
+            Tarang: ["Marketing and Promotion", "Disposable waste mitigation (Recurring Event)", "Plastic waste segregation (Recurring Event)", "Policy Brief Competition with AUES (Contests)", "No-equipment sports day with SEC (Contests)", "Case competition with ACC (Contests)", "Workshops (in collaboration with various clubs and societies)", "Nature tour in collaboration with Ashoka Cycling Club (Events, Non-contests)", "Nature tour in collaboration with Safarnama (Events, Non-contests)", "Collaboration with TGR (Events, Non-contests)", "Envi Haat (Events, Non-contests)", "Yapathon (Events, Non-contests)"],
+            MAA: ["Logistics, stationery, support for events by Board of Representatives", "Offline marketing events, helpdesks", "Academic Expo and Meet Academic Societies", "Inter Dept. Events", "Community and Outreach Resources"],
+            CLM: ["Campus Life Grant", "Infrastructure Survey", "Student Body Outreach", "Events", "Newsletter", "Instructional Pamphlets/Addendums to Facilities", "Map Project", "Campus Archive"],
+            MCWB: ["Offline Workshops", "Sharing Circles", "Marketing", "Event Equipment", "Staff wellbeing Initiatives", "Pilot Programme"],
+            Jazbaa: ["Sopan", "Shaam-E-Jazbaa", "Janmashtami", "Ganesh Chaturthi", "Onam", "Eid-e-milad", "Inclusivity Ice Breaker", "World Deaf Day", "Jhoom-e-Jazbaa", "Cultural Week", "World Dyslexia Day", "Navratri/Garba Night", "Halloween", "Diwali Haat", "Happy Street", "Childhood Games", "Child Rights Day", "Disability Day", "Christmas", "World Braille Day", "Winter Ball", "Celebrating Love / Valentines Day", "Holi", "Elimination of Racial Discrimination Day", "Eid-al-Fitr Haat", "Baisakhi", "Easter + Jazbaa Wrapped", "Seniors week", "Inclusivity Events", "Festivals", "Clubs & Socs Meet"],
+            Sports: ["Weekly Sporting Events", "Flagship Event - Racket Sports League", "Social Media & Marketing", "Posters & Stationery", "Community Engagement", "Inclusivity"],
+            PRD: [],
+            EC: [],
+            SG: []
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('ministry').addEventListener('change', function() {
+                console.log('Ministry selected:', this.value);
+                document.getElementById('add-expense').disabled = false;
+            });
+
+            document.getElementById('add-expense').addEventListener('click', addExpense);
+
+            document.body.addEventListener('click', (event) => {
+                if (event.target.classList.contains('payment-option')) {
+                    const section = event.target.closest('.expense-section');
+                    if (!section) return;
+
+                    const options = section.querySelectorAll('.payment-option');
+                    options.forEach(option => {
+                        option.classList.remove('selected');
+                    });
+
+                    event.target.classList.add('selected');
+
+                    const radio = event.target.parentElement.querySelector('input[type="radio"]');
+                    if (radio) {
+                        radio.checked = true;
+                    }
+                }
+            });
+        });
+
+        function addExpense() {
+            let container = document.getElementById('expense-sections');
+            let section = document.createElement('div');
+            section.classList.add('bg-gray-50', 'p-6', 'rounded-lg', 'mb-6', 'shadow-md', 'relative', 'expense-section');
+            let ministry = document.getElementById('ministry').value;
+            let categories = expenseCategories[ministry] || [];
+
+            expenseIdCounter++;
+            const uniqueId = 'expense-' + expenseIdCounter;
+
+            const categoriesWithOther = [...categories];
+            if (!categoriesWithOther.includes("Other")) {
+                categoriesWithOther.push("Other");
+            }
+
+            document.getElementById('ministry').disabled = true;
+
+            let categoryInput = `
+            <select class="expenseCategory w-full px-4 py-2 border rounded-button focus:ring-2 focus:ring-primary focus:border-primary">
+                <option value="" disabled selected>Select Expense Category</option>
+                ${categoriesWithOther.map(cat => `<option value="${cat}">${cat}</option>`).join('')}
+            </select>
+            <input type="text" class="customCategory w-full px-4 py-2 border rounded-button focus:ring-2 focus:ring-primary focus:border-primary mt-2 hidden" 
+                placeholder="Enter Custom Expense Category">
+            `;
+
+            section.innerHTML = `
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-medium text-primary">Expense Entry</h3>
+                <button type="button" class="remove-expense text-red-500 hover:text-red-700 transition-colors">
+                    <i class="ri-close-line text-2xl"></i>
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Expense Category <span class="text-red-600">*</span></label>
+                    ${categoryInput}
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Amount <span class="text-red-600">*</span></label>
+                    <input type="number" min="0" step="0.01" 
+                        class="amount w-full px-4 py-2 border rounded-button focus:ring-2 focus:ring-primary focus:border-primary" 
+                        placeholder="Enter Amount" required
+                        oninput="validateAmount(this)">
+                </div>
+
+                <div class="col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Justification <span class="text-red-600">*</span></label>
+                    <textarea class="justification w-full px-4 py-2 border rounded-button focus:ring-2 focus:ring-primary focus:border-primary" 
+                        rows="4" placeholder="Explain Expense in detail" required></textarea>
+                </div>
+
+                <div class="col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Mode of Payment <span class="text-red-600">*</span></label>
+                    <div class="flex items-center gap-6">
+                        <label class="flex items-center">
+                            <input type="radio" name="paymentMode-${uniqueId}" value="Cash" class="paymentMode hidden" required>
+                            <span class="payment-option px-4 py-2 border rounded-button cursor-pointer hover:bg-gray-100 transition-colors">Cash</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="radio" name="paymentMode-${uniqueId}" value="Credit/Debit Card" class="paymentMode hidden" required>
+                            <span class="payment-option px-4 py-2 border rounded-button cursor-pointer hover:bg-gray-100 transition-colors">Credit/Debit Card</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="radio" name="paymentMode-${uniqueId}" value="UPI" class="paymentMode hidden" required>
+                            <span class="payment-option px-4 py-2 border rounded-button cursor-pointer hover:bg-gray-100 transition-colors">UPI</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Expense Date <span class="text-red-600">*</span></label>
+                    <input type="date" class="expenseDate w-full px-4 py-2 border rounded-button focus:ring-2 focus:ring-primary focus:border-primary" required>
+                </div>
+
+                <div class="col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Upload Receipt (PDF/Image) <span class="text-red-600">*</span></label>
+                    <input type="file" class="receipt-upload w-full px-4 py-2 border rounded-button focus:ring-2 focus:ring-primary focus:border-primary" 
+                        accept=".pdf, .png, .jpg, .jpeg" required>
+                    <p class="text-xs text-gray-500 mt-1">Maximum file size: 10MB</p>
+                </div>
+            </div>
+            `;
+
+            container.appendChild(section);
+            
+            expenseCount++;
+            document.getElementById('expense-counter').textContent = expenseCount;
+
+            const expenseSelect = section.querySelector('.expenseCategory');
+            const customCategoryInput = section.querySelector('.customCategory');
+
+            expenseSelect.addEventListener('change', () => {
+                if (expenseSelect.value === "Other") {
+                    customCategoryInput.classList.remove('hidden');
+                } else {
+                    customCategoryInput.classList.add('hidden');
+                }
+            });
+
+            section.querySelector('.remove-expense').addEventListener('click', function() {
+                section.remove();
+                expenseCount--;
+                document.getElementById('expense-counter').textContent = expenseCount;
+
+                if (expenseCount === 0) {
+                    document.getElementById('ministry').disabled = false;
+                }
+            });
+        }
+
+        function showPopup(title, message) {
+            console.log(`Showing popup: ${title} - ${message}`);
+            const popup = document.getElementById('popup');
+            const popupTitle = document.getElementById('popup-title');
+            const popupMessage = document.getElementById('popup-message');
+            
+            if (!popup || !popupTitle || !popupMessage) {
+                console.error("Popup elements not found:", {
+                    popup: !!popup,
+                    title: !!popupTitle,
+                    message: !!popupMessage
+                });
+                alert(`${title}: ${message}`); // Fallback to alert if elements are missing
+                return;
+            }
+            
+            popupTitle.textContent = title;
+            popupMessage.innerHTML = message; // Use innerHTML to support links if needed
+            popup.classList.remove('hidden');
+            
+            // Make sure we only add one event listener by removing any existing ones
+            const closeButton = document.getElementById('popup-close');
+            const newCloseButton = closeButton.cloneNode(true);
+            closeButton.parentNode.replaceChild(newCloseButton, closeButton);
+            newCloseButton.addEventListener('click', function() {
+                popup.classList.add('hidden');
+            });
+        }
+
+        function submitForm() {
+            console.log("Submit form function called");
+            let name = document.getElementById('name').value.trim();
+            let email = document.getElementById('email').value.trim();
+            let ministry = document.getElementById('ministry').value;
+            let pocDesignation = document.getElementById('poc-designation').value.trim();
+            let pocReg = document.getElementById('poc-reg').value.trim();
+            let pocUpi = document.getElementById('poc-upi').value.trim();
+
+            if (!name || !email || !ministry || !pocDesignation || !pocReg) {
+                showPopup("Error", "Please fill out all required fields.");
+                return;
+            }
+
+            if (!/^\d{10}$/.test(pocReg)) {
+                showPopup("Error", "PoC Registration Number must be exactly 10 digits.");
+                return;
+            }
+
+            if (!email.endsWith('@ashoka.edu.in')) {
+                showPopup("Error", "Please use an ashoka.edu.in email address.");
+                return;
+            }
+
+            const expenseSections = document.querySelectorAll('.expense-section');
+            if (expenseSections.length === 0) {
+                showPopup("Error", "Please add at least one expense.");
+                return;
+            }
+
+            let expenses = [];
+            let filePromises = [];
+            let hasValidationError = false;
+            let totalAmount = 0;
+
+            // Disable form submission button to prevent multiple submissions
+            const submitButton = document.getElementById('submit-button');
+            submitButton.disabled = true;
+            submitButton.textContent = 'Processing...';
+
+            expenseSections.forEach((section, index) => {
+                let categoryField = section.querySelector('.expenseCategory');
+                let customField = section.querySelector('.customCategory');
+                let expenseCategory = categoryField.value === "Other" ? customField.value.trim() : categoryField.value;
+
+                let amount = section.querySelector('.amount').value.trim();
+                let justification = section.querySelector('.justification').value.trim();
+                let paymentMode = section.querySelector('input[name^="paymentMode"]:checked');
+                let expenseDate = section.querySelector('.expenseDate').value;
+                let fileInput = section.querySelector('.receipt-upload');
+
+                if (!expenseCategory || !amount || !justification || !paymentMode || !expenseDate || !fileInput.files.length) {
+                    showPopup("Error", `Please fill all required fields in expense #${index + 1}`);
+                    hasValidationError = true;
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Submit Reimbursement Form';
+                    return;
+                }
+                
+                const file = fileInput.files[0];
+                if (file.size > 10 * 1024 * 1024) {
+                    showPopup("Error", `File ${file.name} exceeds the 10MB size limit.`);
+                    hasValidationError = true;
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Submit Reimbursement Form';
+                    return;
+                }
+
+                const filePromise = new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const base64data = e.target.result.split(',')[1];
+                        resolve({
+                            filename: file.name,
+                            mimeType: file.type,
+                            data: base64data
+                        });
+                    };
+                    reader.readAsDataURL(file);
+                });
+                
+                filePromises.push(filePromise);
+
+                const parsedAmount = parseFloat(amount);
+                totalAmount += parsedAmount;
+
+                expenses.push({
+                    id: index + 1,
+                    category: expenseCategory,
+                    amount: parsedAmount,
+                    formattedAmount: parsedAmount.toFixed(2),
+                    justification: justification,
+                    paymentMode: paymentMode.value,
+                    expenseDate: expenseDate,
+                    filename: file.name
+                });
+            });
+
+            if (hasValidationError) return;
+
+            showPopup("Processing", "Uploading files and submitting your request. Please wait...");
+            
+            Promise.all(filePromises)
+                .then(fileDataArray => {
+                    let formData = { 
+                        metadata: {
+                            submittedAt: new Date().toISOString(),
+                            totalExpenses: expenses.length,
+                            totalAmount: totalAmount.toFixed(2)
+                        },
+                        requestor: {
+                            name, 
+                            email,
+                            pocDesignation, 
+                            pocReg, 
+                            pocUpi
+                        },
+                        ministry,
+                        expenses,
+                        files: fileDataArray
+                    };
+
+                    console.log("Submitting form data with files");
+                    
+                    try {
+                        google.script.run
+                            .withSuccessHandler(function(response) {
+                                console.log("Received form submission response:", response);
+                                submitButton.disabled = false;
+                                submitButton.textContent = 'Submit Reimbursement Form';
+                                
+                                if (response && response.success) {
+                                    showPopup("Success", `
+                                        <div class="text-center">
+                                            <div class="text-green-600 mb-2"><i class="ri-check-line text-3xl"></i></div>
+                                            <div class="font-bold mb-2">Reimbursement submitted successfully!</div>
+                                            <div>Request ID: <span class="font-bold">${response.requestId}</span></div>
+                                            <div class="text-sm mt-4">An email confirmation has been sent to your inbox.</div>
+                                            <div class="text-sm text-gray-500 mt-2">This page will reload in 5 seconds...</div>
+                                        </div>
+                                    `);
+                                    setTimeout(() => location.reload(), 5000);
+                                } else {
+                                    const errorMsg = (response && response.message) ? response.message : "Unknown error occurred";
+                                    showPopup("Error", `Submission failed: ${errorMsg}<br><br>Please try again or contact treasurer@ashoka.edu.in`);
+                                    console.error("Error details:", response);
+                                }
+                            })
+                            .withFailureHandler(function(error) {
+                                console.error("Submission error:", error);
+                                submitButton.disabled = false;
+                                submitButton.textContent = 'Submit Reimbursement Form';
+                                showPopup("Error", `Submission failed: ${error.message || "Unknown server error"}<br><br>Please try again or contact treasurer@ashoka.edu.in`);
+                            })
+                            .processFormWithFiles(formData);
+                    } catch (e) {
+                        console.error("Exception during script run:", e);
+                        submitButton.disabled = false;
+                        submitButton.textContent = 'Submit Reimbursement Form';
+                        showPopup("Error", `Exception during submission: ${e.message}<br><br>Please try again or contact treasurer@ashoka.edu.in`);
+                    }
+                })
+                .catch(error => {
+                    console.error("File processing error:", error);
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Submit Reimbursement Form';
+                    showPopup("Error", "An error occurred while processing your files. Please try again.");
+                });
+        }
+
+        function validateAmount(input) {
+            if (input.value < 0) {
+                input.value = 0;
+            }
+            if (input.value.includes('.') && input.value.split('.')[1].length > 2) {
+                input.value = parseFloat(input.value).toFixed(2);
+            }
+        }
+
+        function limitInput(input) {
+            input.value = input.value.replace(/\D/g, '').slice(0, 10);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById("submit-button").addEventListener("click", submitForm);
+
+            // Make sure the popup close button works
+            document.getElementById('popup-close').addEventListener('click', function() {
+                document.getElementById('popup').classList.add('hidden');
+            });
+            
+            // Make sure the submit button event listener is properly attached
+            const submitButton = document.getElementById('submit-button');
+            if (submitButton) {
+                // Remove any existing listeners to prevent duplicates
+                const newSubmitButton = submitButton.cloneNode(true);
+                submitButton.parentNode.replaceChild(newSubmitButton, submitButton);
+                
+                // Add the event listener
+                newSubmitButton.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    console.log("Submit button clicked");
+                    submitForm();
+                });
+            } else {
+                console.error("Submit button not found!");
+            }
+
+            // Add debug element for console logging to UI
+            const debugElement = document.createElement('div');
+            debugElement.id = 'debug-log';
+            debugElement.style.display = 'none';
+            debugElement.style.position = 'fixed';
+            debugElement.style.bottom = '10px';
+            debugElement.style.right = '10px';
+            debugElement.style.backgroundColor = 'rgba(0,0,0,0.8)';
+            debugElement.style.color = 'white';
+            debugElement.style.padding = '10px';
+            debugElement.style.borderRadius = '5px';
+            debugElement.style.maxHeight = '200px';
+            debugElement.style.maxWidth = '400px';
+            debugElement.style.overflow = 'auto';
+            debugElement.style.zIndex = '1000';
+            document.body.appendChild(debugElement);
+            
+            // Add debug toggle button
+            const debugToggle = document.createElement('button');
+            debugToggle.textContent = 'Debug';
+            debugToggle.style.position = 'fixed';
+            debugToggle.style.bottom = '10px';
+            debugToggle.style.right = '10px';
+            debugToggle.style.zIndex = '1001';
+            debugToggle.style.padding = '5px 10px';
+            debugToggle.style.backgroundColor = '#1e3a8a';
+            debugToggle.style.color = 'white';
+            debugToggle.style.border = 'none';
+            debugToggle.style.borderRadius = '5px';
+            debugToggle.onclick = function() {
+                const debugLog = document.getElementById('debug-log');
+                debugLog.style.display = debugLog.style.display === 'none' ? 'block' : 'none';
+            };
+            document.body.appendChild(debugToggle);
+
+            // Override console.log to show in debug element
+            const originalConsoleLog = console.log;
+            console.log = function() {
+                const args = Array.from(arguments);
+                originalConsoleLog.apply(console, args);
+                
+                const debugLog = document.getElementById('debug-log');
+                if (debugLog) {
+                    const message = args.map(arg => {
+                        if (typeof arg === 'object') {
+                            try {
+                                return JSON.stringify(arg);
+                            } catch (e) {
+                                return String(arg);
+                            }
+                        }
+                        return String(arg);
+                    }).join(' ');
+                    
+                    const logEntry = document.createElement('div');
+                    logEntry.textContent = message;
+                    logEntry.style.borderBottom = '1px solid rgba(255,255,255,0.2)';
+                    logEntry.style.padding = '2px 0';
+                    debugLog.appendChild(logEntry);
+                    
+                    // Keep only the last 30 messages
+                    while (debugLog.children.length > 30) {
+                        debugLog.removeChild(debugLog.firstChild);
+                    }
+                    
+                    // Scroll to bottom
+                    debugLog.scrollTop = debugLog.scrollHeight;
+                }
+            };
+        });
+    </script>
+</body>
+</html>

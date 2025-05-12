@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reimbursement Form</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.min.css" rel="stylesheet">
+    <script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                colors: {
+                    primary: '#1e3a8a',
+                    secondary: '#dc2626'
+                },
+                borderRadius: {
+                    'none': '0px',
+                    'sm': '4px',
+                    DEFAULT: '8px',
+                    'md': '12px',
+                    'lg': '16px',
+                    'xl': '20px',
+                    '2xl': '24px',
+                    '3xl': '32px',
+                    'full': '9999px',
+                    'button': '8px'
+                }
+            }
+        }
+    }
+    </script>
+    <style>
+        :where([class^="ri-"])::before { content: "\f3c2"; }
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .payment-option {
+    transition: all 0.3s ease;
+    border: 2px solid transparent;   /* Default border */
+    cursor: pointer;
+}
+
+.payment-option:hover {
+    background-color: #f3f4f6;       /* Light gray hover effect */
+}
+
+.payment-option.selected {
+    background-color: #1e3a8a;        /* Blue theme color */
+    color: #ffffff;                   /* White text when selected */
+    border: 2px solid #1e3a8a;        /* Blue border */
+}
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="max-w-4xl mx-auto p-6">
+        <div class="text-center mb-8">
+            <img src="https://sg.ashoka.edu.in/platform/assets/images/logos/SGLogo.png" alt="Logo" class="w-32 h-32 mx-auto mb-4">
+            <h1 class="text-3xl font-bold text-primary">Reimbursement Form</h1>
+        </div>
+        <form id="reimbursementForm" class="bg-white shadow-lg rounded-lg p-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Name <span class="text-red-600">*</span></label>
+                    <input type="text" id="name" placeholder="Your Name" required class="w-full px-4 py-2 border rounded-button focus:ring-2 focus:ring-primary focus:border-primary">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Email <span class="text-red-600">*</span></label>
+                    <input type="email" id="email" placeholder="Your Email (ashoka.edu.in)" required class="w-full px-4 py-2 border rounded-button focus:ring-2 focus:ring-primary focus:border-primary">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Ministry <span class="text-red-600">*</span></label>
+                    <select id="ministry" required class="w-full px-4 py-2 border rounded-button focus:ring-2 focus:ring-primary focus:border-primary">
+                        <option value="" disabled selected>Select Ministry</option>
+                        <option value="MoT">Ministry of Technology</option>
+                        <option value="Tarang">Environment Ministry Tarang</option>
+                        <option value="MAA">Ministry of Academic Affairs</option>
+                        <option value="CLM">Campus Life Ministry</option>
+                        <option value="MCWB">Ministry of Community Wellbeing</option>
+                        <option value="Jazbaa">Cultural Ministry Jazbaa</option>
+                        <option value="PRD">Public Relations Director</option>
+                        <option value="EC">Election Commission</option>
+                        <option value="SG">Student Government Reserve</option>
+                        <option value="Sports">Sports Ministry</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">PoC Designation <span class="text-red-600">*</span></label>
+                    <input type="text" id="poc-designation" placeholder="Designation" required class="w-full px-4 py-2 border rounded-button focus:ring-2 focus:ring-primary focus:border-primary">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">PoC Registration Number <span class="text-red-600">*</span></label>
+                    <input type="number" id="poc-reg" placeholder="Registration Number (10 digits)" required maxlength="10" oninput="limitInput(this)" class="w-full px-4 py-2 border rounded-button focus:ring-2 focus:ring-primary focus:border-primary">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">PoC UPI ID (Optional)</label>
+                    <input type="text" id="poc-upi" placeholder="PoC UPI ID" class="w-full px-4 py-2 border rounded-button focus:ring-2 focus:ring-primary focus:border-primary">
+                </div>
+            </div>
+            <div class="text-lg font-medium text-gray-700 mb-4">
+    Total Expenses: <span id="expense-counter">0</span>
+</div>
+            <div id="expense-sections"></div>
+            <button id="add-expense" disabled type="button" class="mb-6 flex items-center px-4 py-2 bg-secondary text-white rounded-button hover:bg-red-700 transition-colors">
+                <i class="ri-add-line mr-2"></i> Add Expense
+            </button>
+            <button type="button" id="submit-button" class="w-full px-6 py-3 bg-primary text-white rounded-button hover:bg-blue-900 transition-colors font-medium">
+                Submit Reimbursement Form
+            </button>
+        </form>
+    </div>
+    <script>
+      let expenseCount = 0;  // Global counter to track number of expenses
+        const expenseCategories = {
+            MoT: ["Websites", "Washing Machine Status Checker", "Events", "Marketing"],
+Tarang: ["Marketing and Promotion", "Disposable waste mitigation (Recurring Event)", "Plastic waste segregation (Recurring Event)", "Policy Brief Competition with AUES (Contests)", "No-equipment sports day with SEC (Contests)", "Case competition with ACC (Contests)", "Workshops (in collaboration with various clubs and societies)", "Nature tour in collaboration with Ashoka Cycling Club (Events, Non-contests)", "Nature tour in collaboration with Safarnama (Events, Non-contests)", "Collaboration with TGR (Events, Non-contests)", "Envi Haat (Events, Non-contests)", "Yapathon (Events, Non-contests)"],
+MAA: ["Logistics, stationery, support for events by Board of Representatives", "Offline marketing events, helpdesks", "Academic Expo and Meet Academic Societies", "Inter Dept. Events", "Community and Outreach Resources"],
+CLM: ["Campus Life Grant", "Infrastructure Survey", "Student Body Outreach", "Events", "Newsletter", "Instructional Pamphlets/Addendums to Facilities", "Map Project", "Campus Archive"],
+MCWB: ["Offline Workshops", "Sharing Circles", "Marketing", "Event Equipment", "Staff wellbeing Initiatives", "Pilot Programme"],
+Jazbaa: ["Sopan", "Shaam-E-Jazbaa", "Janmashtami", "Ganesh Chaturthi", "Onam", "Eid-e-milad", "Inclusivity Ice Breaker", "World Deaf Day", "Jhoom-e-Jazbaa", "Cultural Week", "World Dyslexia Day", "Navratri/Garba Night", "Halloween", "Diwali Haat", "Happy Street", "Childhood Games", "Child Rights Day", "Disability Day", "Christmas", "World Braille Day", "Winter Ball", "Celebrating Love / Valentines Day", "Holi", "Elimination of Racial Discrimination Day", "Eid-al-Fitr Haat", "Baisakhi", "Easter + Jazbaa Wrapped", "Seniors week", "Inclusivity Events", "Festivals", "Clubs & Socs Meet"],
+Sports: ["Weekly Sporting Events", "Flagship Event - Racket Sports League", "Social Media & Marketing", "Posters & Stationery", "Community Engagement", "Inclusivity"],
+PRD: [],
+EC: [],
+SG: []
+        };
+
+        document.getElementById('ministry').addEventListener('change', function() {
+            document.getElementById('add-expense').disabled = false;
+        });
+
+        document.getElementById('add-expense').addEventListener('click', function() {
+    let container = document.getElementById('expense-sections');
+    let section = document.createElement('div');
+    section.classList.add('bg-gray-50', 'p-6', 'rounded-lg', 'mb-6', 'shadow-md', 'relative', 'expense-section');
+    let ministry = document.getElementById('ministry').value;
+    let categories = expenseCategories[ministry] || [];
+
+    // Add "Other" option to categories list
+    categories.push("Other");
+
+    let categoryInput = `
+        <select class="expenseCategory w-full px-4 py-2 border rounded-button focus:ring-2 focus:ring-primary focus:border-primary">
+            <option value="" disabled selected>Select Expense Category</option>
+            ${categories.map(cat => `<option value="${cat}">${cat}</option>`).join('')}
+        </select>
+        <input type="text" class="customCategory w-full px-4 py-2 border rounded-button focus:ring-2 focus:ring-primary focus:border-primary mt-2 hidden" 
+            placeholder="Enter Custom Expense Category">
+    `;
+
+    section.innerHTML = `
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-medium text-primary">Expense Entry</h3>
+            <button type="button" class="remove-expense text-red-500 hover:text-red-700 transition-colors">
+                <i class="ri-close-line text-2xl"></i>
+            </button>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Expense Category <span class="text-red-600">*</span></label>
+                ${categoryInput}
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Amount <span class="text-red-600">*</span></label>
+                <input type="number" class="amount w-full px-4 py-2 border rounded-button focus:ring-2 focus:ring-primary focus:border-primary" placeholder="Enter Amount" required>
+            </div>
+
+            <div class="col-span-2">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Justification <span class="text-red-600">*</span></label>
+                <textarea class="justification w-full px-4 py-2 border rounded-button focus:ring-2 focus:ring-primary focus:border-primary" 
+                    rows="4" placeholder="Explain Expense in detail" required></textarea>
+            </div>
+
+            <div class="col-span-2">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Mode of Payment <span class="text-red-600">*</span></label>
+                <div class="flex items-center gap-6">
+                    <label class="flex items-center">
+                        <input type="radio" name="paymentMode-${Date.now()}" value="Cash" class="paymentMode hidden" required>
+                        <span class="payment-option px-4 py-2 border rounded-button cursor-pointer hover:bg-gray-100 transition-colors">Cash</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="radio" name="paymentMode-${Date.now()}" value="Credit/Debit Card" class="paymentMode hidden" required>
+                        <span class="payment-option px-4 py-2 border rounded-button cursor-pointer hover:bg-gray-100 transition-colors">Credit/Debit Card</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="radio" name="paymentMode-${Date.now()}" value="UPI" class="paymentMode hidden" required>
+                        <span class="payment-option px-4 py-2 border rounded-button cursor-pointer hover:bg-gray-100 transition-colors">UPI</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="col-span-2">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Expense Date <span class="text-red-600">*</span></label>
+                <input type="date" class="expenseDate w-full px-4 py-2 border rounded-button focus:ring-2 focus:ring-primary focus:border-primary" required>
+            </div>
+
+            <div class="col-span-2">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Upload Receipt (PDF/Image) <span class="text-red-600">*</span></label>
+                <input type="file" id="receipt-upload" multiple accept=".pdf, .png, .jpg, .jpeg" required 
+                    class="w-full px-4 py-2 border rounded-button focus:ring-2 focus:ring-primary focus:border-primary">
+            </div>
+        </div>
+    `;
+
+    container.appendChild(section);
+    
+    expenseCount++;
+document.getElementById('expense-counter').textContent = expenseCount;
+
+    // Add event listener for "Other" category selection
+    const expenseSelect = section.querySelector('.expenseCategory');
+    const customCategoryInput = section.querySelector('.customCategory');
+
+    expenseSelect.addEventListener('change', () => {
+        if (expenseSelect.value === "Other") {
+            customCategoryInput.classList.remove('hidden');
+        } else {
+            customCategoryInput.classList.add('hidden');
+        }
+    });
+
+    // Add remove functionality
+    section.querySelector('.remove-expense').addEventListener('click', function() {
+        section.remove();
+        expenseCount--;
+        document.getElementById('expense-counter').textContent = expenseCount;
+    });
+});
+       function submitForm() {
+    let name = document.getElementById('name').value.trim();
+    let email = document.getElementById('email').value.trim();
+    let ministry = document.getElementById('ministry').value;
+    let pocDesignation = document.getElementById('poc-designation').value.trim();
+    let pocReg = document.getElementById('poc-reg').value.trim();
+    let pocUpi = document.getElementById('poc-upi').value.trim();
+
+    if (!name || !email || !ministry || !pocDesignation || !pocReg) {
+        alert("Please fill out all required fields.");
+        return;
+    }
+
+    if (!/^\d{10}$/.test(pocReg)) {
+        alert("PoC Registration Number must be exactly 10 digits.");
+        return;
+    }
+
+    let expenses = [];
+    document.querySelectorAll('.expense-section').forEach(section => {
+        let categoryField = section.querySelector('.expenseCategory');
+        let customField = section.querySelector('.customCategory');
+        let expenseCategory = categoryField.value === "Other" ? customField.value.trim() : categoryField.value;
+
+        let amount = section.querySelector('.amount').value.trim();
+        let justification = section.querySelector('.justification').value.trim();
+        let paymentMode = section.querySelector('input[name^="paymentMode"]:checked').value;
+        let expenseDate = section.querySelector('.expenseDate').value;
+
+        if (!expenseCategory || !amount || !justification || !paymentMode || !expenseDate) {
+            alert("Please fill all expense details.");
+            return;
+        }
+
+        expenses.push({
+            category: expenseCategory,
+            amount: parseFloat(amount),
+            justification: justification,
+            paymentMode: paymentMode,
+            expenseDate: expenseDate
+        });
+    });
+
+    if (expenses.length === 0) {
+        alert("Please add at least one expense.");
+        return;
+    }
+
+    let formData = { name, email, ministry, pocDesignation, pocReg, pocUpi, expenses };
+
+    console.log("Submitting form data:", formData);
+
+    // Send data to Google Apps Script
+    google.script.run
+     .withSuccessHandler(response => {
+         if (response.status === "success") {
+             alert("Reimbursement submitted successfully! Request ID: " + response.requestId);
+             location.reload();
+         } else {
+             alert("Submission failed: " + response.message);
+         }
+     })
+     .withFailureHandler(error => {
+         alert("Submission failed. Please try again.");
+         console.error(error);
+     })
+     .processForm(formData);
+}
+
+      function limitInput(input) {
+    input.value = input.value.replace(/\D/g, '').slice(0, 10);}
+
+        document.getElementById("submit-button").addEventListener("click", submitForm);
+
+        document.addEventListener('DOMContentLoaded', () => {
+    document.body.addEventListener('click', (event) => {
+        if (event.target.classList.contains('payment-option')) {
+            // Remove 'selected' class from all payment options
+            document.querySelectorAll('.payment-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+
+            // Add 'selected' class to the clicked option
+            event.target.classList.add('selected');
+
+            // Check the corresponding radio button
+            const radio = event.target.parentElement.querySelector('input[type="radio"]');
+            if (radio) {
+                radio.checked = true;
+            }
+        }
+    });
+});
+    </script>
+</body>
+</html>

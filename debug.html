@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spreadsheet Debug Tool</title>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; padding: 20px; max-width: 800px; margin: 0 auto; }
+    h1 { color: #1e3a8a; }
+    pre { background-color: #f4f4f8; padding: 10px; border-radius: 4px; overflow-x: auto; }
+    .success { color: green; }
+    .error { color: red; }
+    button { background-color: #1e3a8a; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-right: 10px; margin-bottom: 10px; }
+    button:hover { background-color: #2c5282; }
+    .section { margin-bottom: 30px; border: 1px solid #ddd; padding: 15px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>Spreadsheet Debug Tool</h1>
+  
+  <div class="section">
+    <h2>Spreadsheet Access Test</h2>
+    <p>Test if your script can access the spreadsheet and what sheets/columns are available.</p>
+    <button id="testAccess">Test Spreadsheet Access</button>
+    <div id="accessResult"></div>
+  </div>
+  
+  <div class="section">
+    <h2>GetSheetData Test</h2>
+    <p>Test the getSheetData function that the dashboard uses:</p>
+    <button id="testGetData">Test getSheetData</button>
+    <button id="testRawData">Get Raw Sheet Data</button>
+    <div id="getDataResult"></div>
+  </div>
+  
+  <script>
+    document.getElementById('testAccess').addEventListener('click', function() {
+      const resultDiv = document.getElementById('accessResult');
+      resultDiv.innerHTML = '<p>Testing spreadsheet access...</p>';
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          let html = '<h3>Results:</h3>';
+          
+          if (result.success) {
+            html += '<p class="success">✓ Successfully accessed spreadsheet</p>';
+            html += `<p>Available sheets: ${result.sheetNames.join(', ')}</p>`;
+            html += `<p>Headers found: ${result.headers.join(', ')}</p>`;
+            html += `<p>Row count: ${result.rowCount}</p>`;
+          } else {
+            html += `<p class="error">✗ Error accessing spreadsheet: ${result.error}</p>`;
+            html += `<pre>${result.stack}</pre>`;
+          }
+          
+          resultDiv.innerHTML = html;
+        })
+        .withFailureHandler(function(error) {
+          resultDiv.innerHTML = `<p class="error">✗ Function execution failed: ${error.message}</p>`;
+        })
+        .testSpreadsheetAccess();
+    });
+    
+    document.getElementById('testGetData').addEventListener('click', function() {
+      const resultDiv = document.getElementById('getDataResult');
+      resultDiv.innerHTML = '<p>Testing getSheetData function...</p>';
+      
+      google.script.run
+        .withSuccessHandler(function(data) {
+          console.log('Raw data received from getSheetData:', data);
+
+          let html = '<h3>Results:</h3>';
+          if (data === null || data === undefined) {
+            html += '<p class="error">✗ getSheetData returned null or undefined</p>';
+          } else if (data.error) {
+            html += `<p class="error">✗ getSheetData returned an error: ${data.error}</p>`;
+            html += `<p>Details: ${data.details || 'None provided'}</p>`;
+            if (data.stack) {
+              html += `<pre>${data.stack}</pre>`;
+            }
+          } else if (Array.isArray(data)) {
+            html += `<p class="success">✓ Data retrieved: ${data.length} unique request groups</p>`;
+            if (data.length > 0) {
+              html += '<p>First request sample:</p>';
+              html += `<pre>${JSON.stringify(data[0], null, 2)}</pre>`;
+            } else {
+              html += '<p class="error">✗ Array is empty</p>';
+            }
+          } else {
+            html += '<p class="error">✗ Unexpected data type returned</p>';
+            html += `<pre>Type: ${typeof data}\nValue: ${JSON.stringify(data, null, 2)}</pre>`;
+          }
+
+          resultDiv.innerHTML = html;
+        })
+        .withFailureHandler(function(error) {
+          console.error('Error fetching data:', error);
+          resultDiv.innerHTML = `<p class="error">✗ Function execution failed: ${error.message || error}</p>`;
+        })
+        .getSheetData();
+    });
+
+    document.getElementById('testRawData').addEventListener('click', function() {
+      const resultDiv = document.getElementById('getDataResult');
+      resultDiv.innerHTML = '<p>Getting raw sheet data...</p>';
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          let html = '<h3>Raw Sheet Data:</h3>';
+          
+          if (result.error) {
+            html += `<p class="error">✗ Error: ${result.error}</p>`;
+            if (result.message) html += `<p>${result.message}</p>`;
+            if (result.stack) html += `<pre>${result.stack}</pre>`;
+          } else {
+            html += `<p class="success">✓ Found ${result.rowCount} rows (including header)</p>`;
+            html += '<p>Headers:</p>';
+            html += `<pre>${JSON.stringify(result.headers, null, 2)}</pre>`;
+            html += '<p>First data row:</p>';
+            html += `<pre>${JSON.stringify(result.firstRow, null, 2)}</pre>`;
+            html += '<p>Header to column mapping:</p>';
+            html += `<pre>${JSON.stringify(result.headerMap, null, 2)}</pre>`;
+          }
+          
+          resultDiv.innerHTML = html;
+        })
+        .withFailureHandler(function(error) {
+          resultDiv.innerHTML = `<p class="error">✗ Failed to get raw sheet data: ${error.message || error}</p>`;
+        })
+        .getSheetDataRaw();
+    });
+  </script>
+</body>
+</html>
